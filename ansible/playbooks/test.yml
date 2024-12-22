@@ -1,0 +1,13 @@
+---
+- name: Echo test
+  hosts: all
+  tasks:
+    - name: ping check
+      ping:
+
+    - name: echo hello
+      command: echo "hello world"
+      register: result
+
+    - name: print the result
+      debug: msg="{{ result.stdout }}"

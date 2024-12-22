@@ -1,0 +1,5 @@
+# py enviroments
+.venv/
+**.venv/
+
+inventory.ini

@@ -1,0 +1,85 @@
+{
+   "material-icon-theme.activeIconPack": "nest",
+   "material-icon-theme.folders.associations": {
+      "playbook": "gh-workflows"
+   },
+   "material-icon-theme.folders.customClones": [
+      {
+         "name": "users-admin",
+         "base": "admin",
+         "color": "light-green-500",
+         "lightColor": "light-green-700",
+         "folderNames": ["users"]
+      },
+      {
+         "name": "postgres",
+         "base": "database",
+         "color": "blue-500",
+         "lightColor": "blue-700",
+         "folderNames": ["postgres"]
+      },
+      {
+         "name": "docker-swarm",
+         "base": "docker",
+         "color": "red-500",
+         "lightColor": "red-700",
+         "folderNames": ["swarm"]
+      },
+      {
+         "name": "dev-environment",
+         "base": "environment",
+         "color": "green-500",
+         "lightColor": "green-700",
+         "folderNames": ["dev"]
+      },
+      {
+         "name": "stg-environment",
+         "base": "environment",
+         "color": "orange-500",
+         "lightColor": "orange-700",
+         "folderNames": ["stg"]
+      },
+      {
+         "name": "prd-environment",
+         "base": "environment",
+         "color": "red-500",
+         "lightColor": "red-700",
+         "folderNames": ["prod"]
+      },
+      {
+         "name": "service-products",
+         "base": "cart",
+         "color": "blue-500",
+         "lightColor": "blue-700",
+         "folderNames": ["products"]
+      },
+      {
+         "name": "service-sales",
+         "base": "cart",
+         "color": "red-500",
+         "lightColor": "red-700",
+         "folderNames": ["sales"]
+      },
+      {
+         "name": "crm",
+         "base": "job",
+         "color": "blue-500",
+         "lightColor": "blue-700",
+         "folderNames": ["crm"]
+      },
+      {
+         "name": "infrastructure",
+         "base": "aws",
+         "color": "blue-500",
+         "lightColor": "blue-700",
+         "folderNames": ["infra"]
+      },
+      {
+         "name": "DevOpsy",
+         "base": "robot",
+         "color": "blue-500",
+         "lightColor": "blue-700",
+         "folderNames": ["devopsy"]
+      }
+   ]
+}

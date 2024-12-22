@@ -1,0 +1,5 @@
+[local]
+localhost ansible_connection=local
+
+[swarm]
+<insert-your-ip-address> ansible_port=<insert-your-port> ansible_user=<insert-your-username> ansible_ssh_private_key_file=<insert-your-private-key-path>

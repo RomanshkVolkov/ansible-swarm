@@ -1,0 +1,141 @@
+---
+- name: Config server swarm
+  hosts: swarm
+  tasks:
+    - name: ping check
+      ping:
+
+    - name: Install packages required for Docker
+      become: yes
+      apt:
+        name: "{{ item  }}"
+        state: present
+      with_items:
+        - software-properties-common
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+
+    - name: Remove old folder for GPG key
+      become: yes
+      shell: rm -r /etc/apt/keyrings 2>/dev/null || true
+
+    - name: Creater folder for GPG key
+      become: yes
+      shell: mkdir -p /etc/apt/keyrings
+
+    - name: Add Docker’s official GPG key
+      become: yes
+      shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+    - name: Set up the stable repository
+      become: yes
+      shell: echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Update repository
+      become: yes
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
+      become: yes
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-compose-plugin
+        - docker-compose
+
+    - name: Start Docker
+      become: yes
+      shell: systemctl enable docker
+
+    - name: Check status Docker
+      become: yes
+      shell: systemctl status docker
+
+    - name: Install Docker Swarm
+      become: yes
+      shell: docker swarm init
+
+    - name: Check Docker Swarm status
+      become: yes
+      shell: docker node ls
+
+    - name: Create overlay network caddy
+      become: yes
+      shell: docker network create --driver overlay caddy || true
+
+    - name: Create user deploy with folder /home/deploy
+      become: yes
+      user:
+        name: deploy
+        state: present
+        shell: /bin/bash
+        createhome: yes
+
+    - name: Add user deploy to docker group
+      become: yes
+      user:
+        name: deploy
+        groups: docker
+        append: yes
+
+    - name: Ensure .ssh directory exists for deploy user
+      become: yes
+      file:
+        path: /home/deploy/.ssh
+        state: directory
+        owner: deploy
+        group: deploy
+        mode: 0700
+
+    - name: Copy ssh key public to deploy user
+      become: yes
+      copy:
+        src: ~/.ssh/calisto.pub
+        dest: /home/deploy/.ssh/authorized_keys
+        owner: deploy
+        group: deploy
+        mode: 0600
+
+    - name: Check if deploy-caddy.sh script exists
+      delegate_to: localhost
+      shell: cd ../../swarm && ./deploy-caddy.sh tls="sistemas@dwitmexico.com" deployment_dir=. 
+      register: script
+  
+    - name: Write the Caddy deployment YAML file to a temporary file on localhost
+      delegate_to: localhost
+      copy:
+        content: "{{ script.stdout }}"
+        dest: /tmp/caddy.deployment.yml
+
+    - name: Transfer the YAML file to the remote server
+      become: yes
+      copy:
+        src: /tmp/caddy.deployment.yml
+        dest: /tmp/caddy.deployment.yml
+
+    - name: Execute docker stack deploy using the temporary file
+      become: yes
+      shell: docker stack deploy -c /tmp/caddy.deployment.yml caddy || true
+      ignore_errors: yes
+
+    - name: Ensure the temporary YAML file is removed from the remote server
+      become: yes
+      file:
+        path: /tmp/caddy.deployment.yml
+        state: absent
+      ignore_errors: yes
+
+    - name: Ensure the temporary YAML file is removed from localhost
+      delegate_to: localhost
+      file:
+        path: /tmp/caddy.deployment.yml
+        state: absent
+      ignore_errors: yes

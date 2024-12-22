@@ -1,0 +1,25 @@
+{
+  "name": "ansible-swarm",
+  "version": "1.0.0",
+  "description": "this a simple tool",
+  "main": "inventory.ini",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RomanshkVolkov/ansible-swarm.git"
+  },
+  "keywords": [
+    "ansible",
+    "server",
+    "docker",
+    "swarm"
+  ],
+  "author": "Alexandergv2117",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RomanshkVolkov/ansible-swarm/issues"
+  },
+  "homepage": "https://github.com/RomanshkVolkov/ansible-swarm#readme"
+}

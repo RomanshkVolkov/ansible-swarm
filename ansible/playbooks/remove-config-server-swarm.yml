@@ -1,0 +1,50 @@
+---
+- name: Remove config server swarm
+  hosts: swarm
+  tasks:
+    - name: Remove all containers
+      become: yes
+      shell: docker ps -a -q | xargs -r docker rm -f
+      ignore_errors: yes
+
+    - name: Remove node from Docker Swarm
+      become: yes
+      command: docker swarm leave --force
+      ignore_errors: yes
+
+    - name: Stop Docker service
+      become: yes
+      systemd:
+        name: docker
+        state: stopped
+      ignore_errors: yes
+
+    - name: Uninstall Docker Compose
+      become: yes
+      shell: rm -rf /usr/local/bin/docker-compose
+      ignore_errors: yes
+
+    - name: Remove Docker packages
+      become: yes
+      apt:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-compose-plugin
+        - docker-compose
+
+    - name: Kill all processes for the deploy user
+      become: yes
+      shell: "pkill -u deploy"
+      ignore_errors: yes
+
+    - name: Remove deploy user
+      become: yes
+      user:
+        name: deploy
+        state: absent
+        remove: yes
+        force: yes
