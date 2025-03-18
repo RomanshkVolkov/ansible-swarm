@@ -12,10 +12,6 @@ services:
         published: 443
         protocol: tcp
         mode: host
-      - target: 4444
-        published: 4444
-        protocol: tcp
-        mode: host
     networks:
       - caddy
     volumes:
@@ -23,10 +19,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - caddy_data:/data
     environment:
-      - TZ=TIMEZONE_PLACEHOLDER
+      - TZ=America/Cancun
     deploy:
       labels:
-         caddy.email: "TLS_PLACEHOLDER"
+         caddy.email: "sistemas@dwitmexico.com"
          caddy.grace_period: "30s"
       placement:
         constraints:

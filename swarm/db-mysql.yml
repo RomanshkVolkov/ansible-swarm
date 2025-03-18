@@ -1,0 +1,20 @@
+services:
+  STACK_PLACEHOLDER-db:
+    image: mysql
+    environment:
+      - PORT=3000
+      
+      # add more environment variables here same debug.sh and deployment.template.yml
+    networks:
+      - caddy
+    deploy:
+      replicas: 1
+      labels:
+        caddy: mysql.dwitsites.com
+        caddy.tls: sistemas@dwitmexico.com
+        caddy.tls.on_demand:
+        caddy.reverse_proxy: '{{upstreams 4444}}' # important check same value on Dockerfile and PORT enviroment var
+
+networks:
+  caddy:
+    external: true
