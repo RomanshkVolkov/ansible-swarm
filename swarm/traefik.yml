@@ -1,0 +1,84 @@
+services:
+  traefik:
+    image: traefik:v3.4
+    networks:
+      - traefik_proxy
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - ./certs:/certs:ro # No necesitas esto si usas Let's Encrypt
+      # - ./dynamic:/dynamic:ro # No necesitas esto si defines TLS dinámico directamente en el compose o en otro volumen
+      # Monta el volumen persistente para los certificados ACME
+      - traefik_acme:/letsencrypt:rw # Monta el volumen 'traefik_acme' en /letsencrypt dentro del contenedor
+    command:
+      # Puntos de entrada
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+
+      # Proveedor Swarm
+      - "--providers.swarm=true"
+      - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
+      - "--providers.swarm.watch=true"
+      - "--providers.swarm.exposedbydefault=false"
+      # No necesitas --providers.swarm.network si la red se define en el compose
+
+      # API & Dashboard (Desactivado por seguridad)
+      - "--api.dashboard=false" # Deshabilita el dashboard para producción
+      # - "--api.insecure=false" # Ya es falso por defecto
+
+      # Observabilidad
+      - "--log.level=INFO"
+      - "--accesslog=true"
+
+      # Configuración de Let's Encrypt (ACME) con desafío HTTP
+      # Reemplaza 'you@example.com' con tu email real
+      - "--certificatesresolvers.myresolver.acme.email=sistemas@dwitmexico.com"
+      # La ruta interna del contenedor debe coincidir con el punto de montaje
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      # Asigna el resolver ACME al entrypoint websecure
+      - "--entrypoints.websecure.http.tls.certresolver=myresolver" # Usa el nombre del resolver aquí
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      # labels:
+      # El router del dashboard es opcional si está deshabilitado
+      # - "traefik.enable=true" # No es necesario si no se expone el traefik mismo
+      # - "traefik.http.routers.dashboard.rule=Host(`dashboard.midominio.com`)"
+      # - "traefik.http.routers.dashboard.entrypoints=websecure"
+      # - "traefik.http.routers.dashboard.service=api@internal"
+      # - "traefik.http.routers.dashboard.tls=true"
+      # - "traefik.http.routers.dashboard.tls.certresolver=myresolver"
+      # - "traefik.http.middlewares.auth.basicauth.users=<TU_HASH_AQUI>"
+      # - "traefik.http.routers.dashboard.middlewares=auth"
+      # - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
+
+networks:
+  traefik_proxy:
+    driver: overlay
+    attachable: true
+
+# Sección VOLUMES: Aquí defines el volumen persistente nombrado
+volumes:
+  traefik_acme: # Este es el volumen nombrado
+    # Puedes agregar driver_opts si necesitas un backend específico (por ejemplo, para almacenamiento remoto)
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /path/to/host/directory # Para bind mount
+    # Si no defines driver_opts, Docker crea un volumen administrado por Docker en /var/lib/docker/volumes/

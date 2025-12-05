@@ -1,4 +1,4 @@
-version: '3.7'
+version: "3.7"
 
 services:
   caddy:
@@ -22,8 +22,8 @@ services:
       - TZ=America/Cancun
     deploy:
       labels:
-         caddy.email: "sistemas@dwitmexico.com"
-         caddy.grace_period: "30s"
+        caddy.email: "boatyjoao@gmail.com"
+        caddy.grace_period: "30s"
       placement:
         constraints:
           - node.role == manager

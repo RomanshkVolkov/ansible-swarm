@@ -1,4 +1,4 @@
-version: '3.7'
+version: "3.7"
 
 services:
   caddy:
@@ -12,10 +12,6 @@ services:
         published: 443
         protocol: tcp
         mode: host
-      - target: 4444
-        published: 4444
-        protocol: tcp
-        mode: host
     networks:
       - caddy
     volumes:
@@ -26,8 +22,8 @@ services:
       - TZ=TIMEZONE_PLACEHOLDER
     deploy:
       labels:
-         caddy.email: "TLS_PLACEHOLDER"
-         caddy.grace_period: "30s"
+        caddy.email: "TLS_PLACEHOLDER"
+        caddy.grace_period: "30s"
       placement:
         constraints:
           - node.role == manager

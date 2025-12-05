@@ -1,141 +1,276 @@
----
 - name: Config server swarm
   hosts: swarm
   tasks:
     - name: ping check
       ping:
 
-    - name: Install packages required for Docker
-      become: yes
-      apt:
-        name: "{{ item  }}"
-        state: present
-      with_items:
-        - software-properties-common
-        - apt-transport-https
-        - ca-certificates
-        - curl
-        - gnupg
-        - lsb-release
+    # - name: Remove any existing Docker repository files
+    #   become: yes
+    #   file:
+    #     path: "{{ item }}"
+    #     state: absent
+    #   with_items:
+    #     - /etc/apt/sources.list.d/docker.list
+    #     - /etc/apt/sources.list.d/docker.sources
+    #   ignore_errors: yes
 
-    - name: Remove old folder for GPG key
-      become: yes
-      shell: rm -r /etc/apt/keyrings 2>/dev/null || true
+    # - name: Remove old Docker GPG keys
+    #   become: yes
+    #   file:
+    #     path: "{{ item }}"
+    #     state: absent
+    #   with_items:
+    #     - /etc/apt/keyrings/docker.gpg
+    #     - /etc/apt/keyrings/docker.asc
+    #   ignore_errors: yes
 
-    - name: Creater folder for GPG key
-      become: yes
-      shell: mkdir -p /etc/apt/keyrings
+    # - name: Clean apt cache to fix broken state
+    #   become: yes
+    #   shell: apt-get clean
+    #   ignore_errors: yes
 
-    - name: Add Docker’s official GPG key
-      become: yes
-      shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    # - name: Fix broken apt configuration
+    #   become: yes
+    #   apt:
+    #     update_cache: yes
+    #   ignore_errors: yes
 
-    - name: Set up the stable repository
-      become: yes
-      shell: echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    # - name: Install packages required for Docker
+    #   become: yes
+    #   apt:
+    #     name: "{{ item  }}"
+    #     state: present
+    #     update_cache: yes
+    #   with_items:
+    #     - software-properties-common
+    #     - apt-transport-https
+    #     - ca-certificates
+    #     - curl
+    #     - gnupg
+    #     - lsb-release
 
-    - name: Update repository
-      become: yes
-      apt:
-        update_cache: yes
+    # - name: Remove old folder for GPG key
+    #   become: yes
+    #   file:
+    #     path: /etc/apt/keyrings
+    #     state: absent
+    #   ignore_errors: yes
 
-    - name: Install Docker
-      become: yes
-      apt:
-        name: "{{ item }}"
-        state: present
-      with_items:
-        - docker-ce
-        - docker-ce-cli
-        - containerd.io
-        - docker-compose-plugin
-        - docker-compose
+    # - name: Create folder for GPG key
+    #   become: yes
+    #   file:
+    #     path: /etc/apt/keyrings
+    #     state: directory
+    #     mode: "0755"
+
+    # - name: Add Docker's official GPG key
+    #   become: yes
+    #   shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+
+    # - name: Set Permissions for GPG key
+    #   become: yes
+    #   file:
+    #     path: /etc/apt/keyrings/docker.asc
+    #     mode: "0644"
+
+    # - name: Get Ubuntu codename
+    #   become: yes
+    #   shell: . /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}"
+    #   register: ubuntu_codename
+
+    # - name: Set up the stable repository
+    #   become: yes
+    #   copy:
+    #     dest: /etc/apt/sources.list.d/docker.sources
+    #     content: |
+    #       Types: deb
+    #       URIs: https://download.docker.com/linux/ubuntu
+    #       Suites: {{ ubuntu_codename.stdout }}
+    #       Components: stable
+    #       Signed-By: /etc/apt/keyrings/docker.asc
+    #   register: docker_repo_added
+
+    # - name: Update repository cache
+    #   become: yes
+    #   apt:
+    #     update_cache: true
+
+    # - name: Install Docker
+    #   become: yes
+    #   apt:
+    #     name: "{{ item }}"
+    #     state: present
+    #   with_items:
+    #     - docker-ce
+    #     - docker-ce-cli
+    #     - containerd.io
+    #     - docker-compose-plugin
+    #     - docker-compose
 
     - name: Start Docker
       become: yes
-      shell: systemctl enable docker
+      shell: systemctl enable docker && systemctl start docker
 
     - name: Check status Docker
       become: yes
       shell: systemctl status docker
+      register: docker_status
+      ignore_errors: yes
+
+    - name: Display Docker status
+      debug:
+        var: docker_status.stdout_lines
+
+    - name: Check if swarm is already initialized
+      become: yes
+      shell: docker info --format '{% raw %}{{.Swarm.LocalNodeState}}{% endraw %}'
+      register: swarm_status
+      ignore_errors: yes
 
     - name: Install Docker Swarm
       become: yes
       shell: docker swarm init
+      when: swarm_status.stdout != "active"
+      ignore_errors: yes
 
     - name: Check Docker Swarm status
       become: yes
       shell: docker node ls
+      register: swarm_nodes
+      ignore_errors: yes
 
-    - name: Create overlay network caddy
+    - name: Display Swarm nodes
+      debug:
+        var: swarm_nodes.stdout_lines
+
+    - name: Create overlay network traefik
       become: yes
-      shell: docker network create --driver overlay caddy || true
+      shell: docker network create --driver overlay --attachable traefik_proxy || true
 
-    - name: Create user deploy with folder /home/deploy
+    - name: Create user infra_devops with folder /home/infra_devops
       become: yes
       user:
-        name: deploy
+        name: infra_devops
         state: present
         shell: /bin/bash
-        createhome: yes
+        createhome: true
 
-    - name: Add user deploy to docker group
+    - name: Add user infra_devops to docker group
       become: yes
       user:
-        name: deploy
+        name: infra_devops
         groups: docker
-        append: yes
+        append: true
 
-    - name: Ensure .ssh directory exists for deploy user
+    - name: Ensure .ssh directory exists for infra_devops user
       become: yes
       file:
-        path: /home/deploy/.ssh
+        path: /home/infra_devops/.ssh
         state: directory
-        owner: deploy
-        group: deploy
+        owner: infra_devops
+        group: infra_devops
         mode: 0700
 
-    - name: Copy ssh key public to deploy user
+    - name: Copy ssh key public to infra_devops user
       become: yes
       copy:
-        src: ~/.ssh/calisto.pub
-        dest: /home/deploy/.ssh/authorized_keys
-        owner: deploy
-        group: deploy
+        src: ~/.ssh/vps.pub
+        dest: /home/infra_devops/.ssh/authorized_keys
+        owner: infra_devops
+        group: infra_devops
         mode: 0600
 
-    - name: Check if deploy-caddy.sh script exists
+    - name: Get traefik deployment YAML file
       delegate_to: localhost
-      shell: cd ../../swarm && ./deploy-caddy.sh tls="sistemas@dwitmexico.com" deployment_dir=. 
+      shell: cd ../../swarm && cat ./traefik.yml
       register: script
-  
-    - name: Write the Caddy deployment YAML file to a temporary file on localhost
+
+    - name: Write the Traefik deployment YAML file to a temporary file on localhost
       delegate_to: localhost
       copy:
         content: "{{ script.stdout }}"
-        dest: /tmp/caddy.deployment.yml
+        dest: /tmp/traefik.deployment.yml
 
     - name: Transfer the YAML file to the remote server
       become: yes
       copy:
-        src: /tmp/caddy.deployment.yml
-        dest: /tmp/caddy.deployment.yml
+        src: /tmp/traefik.deployment.yml
+        dest: /tmp/traefik.deployment.yml
 
     - name: Execute docker stack deploy using the temporary file
       become: yes
-      shell: docker stack deploy -c /tmp/caddy.deployment.yml caddy || true
+      shell: docker stack deploy -c /tmp/traefik.deployment.yml traefik
+      register: stack_deploy_result
+
+    - name: Display stack deploy result
+      debug:
+        var: stack_deploy_result
+
+    - name: Wait for Traefik service to be created
+      become: yes
+      shell: docker service ls --filter name=traefik
+      register: service_check
+      until: service_check.stdout.find("traefik") != -1
+      retries: 10
+      delay: 5
+
+    - name: Check Traefik service status
+      become: yes
+      shell: docker service ps traefik_traefik --no-trunc
+      register: traefik_service_status
+
+    - name: Display Traefik service status
+      debug:
+        var: traefik_service_status.stdout_lines
+
+    - name: Check if Traefik service is running
+      become: yes
+      shell: docker service inspect --format "{{.Spec.TaskTemplate.ContainerSpec.Image}} {{.Spec.Mode.Replicated.Replicas}}" traefik_traefik
+      register: traefik_inspect
       ignore_errors: yes
+
+    - name: Display Traefik service info
+      debug:
+        var: traefik_inspect.stdout
+
+    - name: Get Traefik container logs
+      become: yes
+      shell: docker service logs traefik_traefik --tail 50
+      register: traefik_logs
+      ignore_errors: yes
+
+    - name: Display Traefik logs
+      debug:
+        var: traefik_logs.stdout_lines
+
+    - name: List all stacks
+      become: yes
+      shell: docker stack ls
+      register: stack_list
+
+    - name: Display stack list
+      debug:
+        var: stack_list.stdout_lines
+
+    - name: List all services
+      become: yes
+      shell: docker service ls
+      register: service_list
+
+    - name: Display service list
+      debug:
+        var: service_list.stdout_lines
 
     - name: Ensure the temporary YAML file is removed from the remote server
       become: yes
       file:
-        path: /tmp/caddy.deployment.yml
+        path: /tmp/traefik.deployment.yml
         state: absent
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Ensure the temporary YAML file is removed from localhost
       delegate_to: localhost
       file:
-        path: /tmp/caddy.deployment.yml
+        path: /tmp/traefik.deployment.yml
         state: absent
-      ignore_errors: yes
+      ignore_errors: true
